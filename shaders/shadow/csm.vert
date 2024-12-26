@@ -12,4 +12,5 @@ void main(void)
 {
     vec4 pos = global_uniform.model * vec4(position, 1.0);
     gl_Position = global_uniform.view_proj * pos;
+  
 }
