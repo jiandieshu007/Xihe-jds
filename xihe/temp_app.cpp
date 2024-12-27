@@ -36,7 +36,7 @@ bool TempApp::prepare(Window *window)
 	assert(scene_ && "Scene not loaded");
 
 	update_bindless_descriptor_sets();
-
+	
 	auto &camera_node = xihe::sg::add_free_camera(*scene_, "main_camera", render_context_->get_surface_extent());
 	auto  camera      = &camera_node.get_component<xihe::sg::Camera>();
 	camera_           = camera;
@@ -228,7 +228,7 @@ void TempApp::draw_gui()
 }
 }        // namespace xihe
 
-std::unique_ptr<xihe::Application> create_application()
-{
-	return std::make_unique<xihe::TempApp>();
-}
+//std::unique_ptr<xihe::Application> create_application()
+//{
+//	return std::make_unique<xihe::TempApp>();
+//}

@@ -21,6 +21,6 @@ class syiAPP : public XiheApp
   private:
 
 	xihe::sg::Camera *camera_{nullptr};
-
+	std::unique_ptr<sg::Scene> skyBoxModel;
 };
 }        // namespace xihe
