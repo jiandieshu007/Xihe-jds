@@ -7,5 +7,5 @@ in vec3 uvs;
 out vec4 fragColor;
 
 void main(){
-	fragColor = texture(Skybox,uvs).rgba;
+	fragColor = texture(Skybox,uvs);
 }
