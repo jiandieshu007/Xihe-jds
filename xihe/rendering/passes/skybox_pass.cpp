@@ -49,66 +49,55 @@ void xihe::rendering::SkyboxPass::update_uniform(backend::CommandBuffer &command
 
 void xihe::rendering::SkyboxPass::draw_submesh(backend::CommandBuffer &command_buffer, sg::SubMesh &sub_mesh, vk::FrontFace front_face)
 {
+	auto& device = command_buffer.get_device();
+	RasterizationState rasterization_state;
+	rasterization_state.front_face = front_face;
+	
+	command_buffer.set_rasterization_state(rasterization_state);
 
-	auto &device = command_buffer.get_device();
+	auto &resource_cache   = command_buffer.get_device().get_resource_cache();
+	auto &vertShaderModule = resource_cache.request_shader_module(vk::ShaderStageFlagBits::eVertex, get_vertex_shader(), sub_mesh.get_shader_variant());
+	auto& fragShaderModule = resource_cache.request_shader_module(vk::ShaderStageFlagBits::eFragment,get_fragment_shader(),sub_mesh.get_shader_variant());
 
-	backend::ScopedDebugLabel{command_buffer, sub_mesh.get_name().c_str()};
+	std::vector<backend::ShaderModule *> shaderMudule{&vertShaderModule, &fragShaderModule};
+	auto                                &pipelineLayout = resource_cache.request_pipeline_layout(shaderMudule);
+	command_buffer.bind_pipeline_layout(pipelineLayout);
 
+//	const auto &DescriptorSetLayout = pipelineLayout.get_descriptor_set_layout(0);
+	command_buffer.bind_image(skyboxImage->get_vk_image_view(), skyboxSampler->vk_sampler_,
+	                          0, 1, 0);
+	auto vertexInputResources = pipelineLayout.get_resources(backend::ShaderResourceType::kInput, vk::ShaderStageFlagBits::eVertex);
 
-	auto &resource_cache = command_buffer.get_device().get_resource_cache();
-
-	auto &vert_shader_module = resource_cache.request_shader_module(vk::ShaderStageFlagBits::eVertex, get_vertex_shader(), sub_mesh.get_shader_variant());
-	auto &frag_shader_module = resource_cache.request_shader_module(vk::ShaderStageFlagBits::eFragment, get_fragment_shader(), sub_mesh.get_shader_variant());
-
-	std::vector<backend::ShaderModule *> shader_modules{&vert_shader_module, &frag_shader_module};
-
-	auto &pipeline_layout = resource_cache.request_pipeline_layout(shader_modules, &resource_cache.request_bindless_descriptor_set());
-
-	command_buffer.bind_pipeline_layout(pipeline_layout);
-	command_buffer.bind_image(skyboxImage->get_vk_image_view(), skyboxSampler->vk_sampler_, 0, 1,0);
-	auto vertex_input_resources = pipeline_layout.get_resources(backend::ShaderResourceType::kInput, vk::ShaderStageFlagBits::eVertex);
-
-	VertexInputState vertex_input_state{};
-
-	for (auto &input_resource : vertex_input_resources)
+	VertexInputState vertexInputState{};
+	for (auto &inputResource : vertexInputResources)
 	{
 		VertexAttribute attribute;
-
-		if (!sub_mesh.get_attribute(input_resource.name, attribute))
+		if (!sub_mesh.get_attribute(inputResource.name, attribute))
 		{
 			continue;
 		}
-
-		vk::VertexInputAttributeDescription vertex_attribute{
-		    input_resource.location,
-		    input_resource.location,
-		    attribute.format,
-		    attribute.offset};
-
-		vertex_input_state.attributes.push_back(vertex_attribute);
-
-		vk::VertexInputBindingDescription vertex_binding{
-		    input_resource.location,
-		    attribute.stride};
-
-		vertex_input_state.bindings.push_back(vertex_binding);
+		vk::VertexInputAttributeDescription vertexAttribute
+		{
+			inputResource.location, inputResource.location, attribute.format, attribute.offset
+		};
+		vertexInputState.attributes.push_back(vertexAttribute);
+		vk::VertexInputBindingDescription vertexBinding{
+		    inputResource.location, attribute.stride
+		};
+		vertexInputState.bindings.push_back(vertexBinding);
 	}
-
-	command_buffer.set_vertex_input_state(vertex_input_state);
-
-	for (auto &input_resource : vertex_input_resources)
+	command_buffer.set_vertex_input_state(vertexInputState);
+	for (auto& inputResource: vertexInputResources)
 	{
-		const auto &buffer_iter = sub_mesh.vertex_buffers.find(input_resource.name);
-
-		if (buffer_iter != sub_mesh.vertex_buffers.end())
+		const auto &bufferIter = sub_mesh.vertex_buffers.find(inputResource.name);
+		if (bufferIter != sub_mesh.vertex_buffers.end())
 		{
 			std::vector<std::reference_wrapper<const backend::Buffer>> buffers;
-			buffers.emplace_back(std::ref(buffer_iter->second));
+			buffers.emplace_back(std::ref(bufferIter->second));
 
-			command_buffer.bind_vertex_buffers(input_resource.location, buffers, {0});
+			command_buffer.bind_vertex_buffers(inputResource.location, buffers, {0});
 		}
 	}
-
 	if (sub_mesh.index_count != 0)
 	{
 		command_buffer.bind_index_buffer(*sub_mesh.index_buffer, sub_mesh.index_offset, sub_mesh.index_type);

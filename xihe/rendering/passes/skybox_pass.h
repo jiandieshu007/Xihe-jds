@@ -11,7 +11,7 @@ class SkyboxPass : public RenderPass
 {
   public:
 	/**
-	 * 
+	 * @param device 
 	 * @param meshes 
 	 * @param camera 
 	 */

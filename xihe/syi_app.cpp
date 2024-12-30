@@ -39,8 +39,6 @@ bool xihe::syiAPP::prepare(Window *window)
 	{
 		auto skyBoxPass = std::make_unique<rendering::SkyboxPass>(*device_,skyBoxModel->get_components<sg::Mesh>(), *camera);
 		graph_builder_->add_pass("SkyBoxPass", std::move(skyBoxPass))
-
-		    .attachments({{rendering::AttachmentType::kColor, "output"}})
 		    .shader({"skybox/skybox.vert", "skybox/skybox.frag"})
 		    .present()
 		    .finalize();
