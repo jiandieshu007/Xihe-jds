@@ -96,10 +96,12 @@ void GeometryPass::draw_submesh(backend::CommandBuffer &command_buffer, sg::SubM
 {
 	auto &device = command_buffer.get_device();
 
+	// what is this?
 	backend::ScopedDebugLabel{command_buffer, sub_mesh.get_name().c_str()};
 
 	prepare_pipeline_state(command_buffer, front_face, sub_mesh.get_material()->double_sided);
 
+	//get big pool  and get resource from here 
 	auto &resource_cache     = command_buffer.get_device().get_resource_cache();
 
 	auto &vert_shader_module = resource_cache.request_shader_module(vk::ShaderStageFlagBits::eVertex, get_vertex_shader(), sub_mesh.get_shader_variant());
@@ -107,6 +109,7 @@ void GeometryPass::draw_submesh(backend::CommandBuffer &command_buffer, sg::SubM
 
 	std::vector<backend::ShaderModule *> shader_modules{&vert_shader_module, &frag_shader_module};
 
+	// According to shader module to get pipelineLayout  
 	auto &pipeline_layout =  resource_cache.request_pipeline_layout(shader_modules, &resource_cache.request_bindless_descriptor_set());
 
 	command_buffer.bind_pipeline_layout(pipeline_layout);
@@ -131,7 +134,7 @@ void GeometryPass::draw_submesh(backend::CommandBuffer &command_buffer, sg::SubM
 	auto vertex_input_resources = pipeline_layout.get_resources(backend::ShaderResourceType::kInput, vk::ShaderStageFlagBits::eVertex);
 
 	VertexInputState vertex_input_state{};
-
+	 // according to vertex state's name in shader and gltf in common
 	for (auto &input_resource : vertex_input_resources)
 	{
 		VertexAttribute attribute;

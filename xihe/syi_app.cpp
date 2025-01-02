@@ -10,7 +10,7 @@ xihe::syiAPP::syiAPP()
 	add_device_extension(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
 	add_device_extension(VK_EXT_MESH_SHADER_EXTENSION_NAME);
 	add_device_extension(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
-
+	//add_device_extension(VK_EXT_SHADER_TILE_IMAGE_EXTENSION_NAME);
 	backend::GlslCompiler::set_target_environment(glslang::EShTargetSpv, glslang::EShTargetSpv_1_4);
 }
 
@@ -20,24 +20,23 @@ bool xihe::syiAPP::prepare(Window *window)
 	{
 		return false;
 	}
-	xihe::GltfLoader loader(*device_);
-	std::string      path = "scenes/cube.gltf";
-	skyBoxModel = loader.read_scene_from_file(path);
+	load_scene("scenes/cube.gltf");
 
-	if (!skyBoxModel)
+
+	if (!scene_)
 	{
-		LOGE("Cannot load scene: {}", path.c_str());
-		throw std::runtime_error("Cannot load scene: " + path);
+		LOGE("Cannot load scene: {}", "scenes/cube.gltf");
+		throw std::runtime_error("Cannot load scene: " );
 	}
 	// load_scene("scenes/cube.gltf");
-	assert(skyBoxModel && "Scene not loaded");
+	assert(scene_ && "Scene not loaded");
 
-	auto &camera_node = xihe::sg::add_free_camera(*skyBoxModel, "main_camera", render_context_->get_surface_extent());
+	auto &camera_node = xihe::sg::add_free_camera(*scene_, "default_camera", render_context_->get_surface_extent());
 	auto  camera      = &camera_node.get_component<xihe::sg::Camera>();
 	camera_           = camera;
 
 	{
-		auto skyBoxPass = std::make_unique<rendering::SkyboxPass>(*device_,skyBoxModel->get_components<sg::Mesh>(), *camera);
+		auto skyBoxPass = std::make_unique<rendering::SkyboxPass>(*device_, scene_->get_components<sg::Mesh>(), *camera);
 		graph_builder_->add_pass("SkyBoxPass", std::move(skyBoxPass))
 		    .shader({"skybox/skybox.vert", "skybox/skybox.frag"})
 		    .present()
@@ -51,6 +50,7 @@ bool xihe::syiAPP::prepare(Window *window)
 
 void xihe::syiAPP::update(float delta_time)
 {
+	XiheApp::update(delta_time);
 }
 
 void xihe::syiAPP::request_gpu_features(backend::PhysicalDevice &gpu)

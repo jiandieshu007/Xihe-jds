@@ -39,7 +39,8 @@ Image::Image(Device                 &device,
              const vk::Extent3D     &extent,
              vk::Format              format,
              vk::ImageUsageFlags     image_usage,
-             vk::SampleCountFlagBits sample_count) :
+             vk::SampleCountFlagBits sample_count,
+             vk::ImageLayout         initiate_layout) :
     Allocated{handle, &device}
 {
 	create_info_.samples     = sample_count;
@@ -48,6 +49,7 @@ Image::Image(Device                 &device,
 	create_info_.imageType   = find_image_type(extent);
 	create_info_.arrayLayers = 1;
 	create_info_.mipLevels   = 1;
+	create_info_.initialLayout = initiate_layout;
 	subresource_.mipLevel    = 1;
 	subresource_.arrayLayer  = 1;
 }
@@ -73,6 +75,7 @@ Image::Image(Device                 &device,
              uint32_t mip_levels, uint32_t array_layers,
              vk::ImageTiling      tiling,
              vk::ImageCreateFlags flags,
+             vk::ImageLayout initiate_layout ,
              uint32_t             num_queue_families,
              const uint32_t      *queue_families) :
     Image{device,
@@ -84,7 +87,8 @@ Image::Image(Device                 &device,
               .with_tiling(tiling)
               .with_flags(flags)
               .with_usage(image_usage)
-              .with_queue_families(num_queue_families, queue_families)}
+              .with_queue_families(num_queue_families, queue_families)
+    			.with_image_layout(initiate_layout)}
 {
 }
 

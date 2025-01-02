@@ -176,7 +176,7 @@ void Image::coerce_format_to_srgb()
 	}
 }
 
-void Image::create_vk_image(backend::Device &device, vk::ImageViewType image_view_type, vk::ImageCreateFlags flags)
+void Image:: create_vk_image(backend::Device &device, vk::ImageViewType image_view_type, vk::ImageCreateFlags flags, vk::ImageLayout initiate_layout)
 {
 	assert(!vk_image && !vk_image_view && "Vulkan Image already constructed");
 
@@ -189,7 +189,9 @@ void Image::create_vk_image(backend::Device &device, vk::ImageViewType image_vie
 	                                                 to_u32(mipmaps.size()),
 	                                                 layers,
 	                                                 vk::ImageTiling::eOptimal,
-	                                                 flags);
+	                                                 flags,
+	                                                 initiate_layout);
+	
 	vk_image->set_debug_name(get_name());
 
 	vk_image_view = std::make_unique<backend::ImageView>(*vk_image, image_view_type);

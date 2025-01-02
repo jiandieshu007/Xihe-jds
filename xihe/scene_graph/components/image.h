@@ -46,7 +46,7 @@ class Image : public sg::Component
 
 	void                                                        clear_data();
 	void                                                        coerce_format_to_srgb();
-	void                                                        create_vk_image(backend::Device &device, vk::ImageViewType image_view_type = vk::ImageViewType::e2D, vk::ImageCreateFlags flags = {});
+	void                                                        create_vk_image(backend::Device &device, vk::ImageViewType image_view_type = vk::ImageViewType::e2D, vk::ImageCreateFlags flags = {},vk::ImageLayout = vk::ImageLayout::eUndefined);
 	void                                                        generate_mipmaps();
 	const std::vector<uint8_t>                                 &get_data() const;
 	const vk::Extent3D                                         &get_extent() const;

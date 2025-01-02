@@ -37,7 +37,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLin
 
 	platform.terminate(code);
 
-	system("pause");
 	FreeConsole();
 
 	return 0;

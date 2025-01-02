@@ -2,14 +2,37 @@
 
 #include "platform/filesystem.h"
 
+#include <iostream>
+
 
 xihe::rendering::SkyboxPass::SkyboxPass(backend::Device &device,std::vector<sg::Mesh *> meshes, sg::Camera &camera) :
     camera_(camera), meshes_(meshes)
 {
 	// load skybox as textureCube
-	std::string file_name = "textures/hdr/pisa_cube.ktx";
+	std::string file_name = "textures/hdr/gcanyon_cube.ktx";
 	skyboxImage          = sg::Image::load("skyboxImage", file_name, sg::Image::kUnknown);
 	skyboxImage->create_vk_image(device, vk::ImageViewType::eCube, vk::ImageCreateFlagBits::eCubeCompatible);
+	auto                 &commandBuffer = device.request_command_buffer();
+	commandBuffer.begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit, nullptr);
+	common::ImageMemoryBarrier memory_barrier{};
+
+	memory_barrier.old_layout = vk::ImageLayout::eUndefined;
+	memory_barrier.new_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
+	memory_barrier.dst_access_mask = vk::AccessFlagBits2::eShaderSampledRead;
+	memory_barrier.src_stage_mask  = vk::PipelineStageFlagBits2::eHost;
+	memory_barrier.dst_stage_mask  = vk::PipelineStageFlagBits2::eFragmentShader;
+	commandBuffer.image_memory_barrier(skyboxImage->get_vk_image_view(), memory_barrier);
+
+	commandBuffer.end();
+
+	auto &queue = device.get_queue_by_flags(vk::QueueFlagBits::eGraphics, 0);
+
+	queue.submit(commandBuffer, device.request_fence());
+	device.get_fence_pool().wait();
+	device.get_fence_pool().reset();
+	device.get_command_pool().reset_pool();
+	device.wait_idle();
+
 	vk::SamplerCreateInfo sampler_create;
 	skyboxSampler = std::make_unique<sg::Sampler>("skyboxSampler", std::move(*(new backend::Sampler(device, sampler_create))));
 }
@@ -22,7 +45,6 @@ void xihe::rendering::SkyboxPass::execute(backend::CommandBuffer &command_buffer
 
 	command_buffer.set_depth_stencil_state(depth_stencil_state);
 
-
 	for(auto& mesh : meshes_)
 	{
 		for( auto& submess: mesh->get_submeshes())
@@ -30,7 +52,6 @@ void xihe::rendering::SkyboxPass::execute(backend::CommandBuffer &command_buffer
 			update_uniform(command_buffer, active_frame,thread_index_);
 			draw_submesh(command_buffer, *submess);
 		}
-
 	}
 }
 
@@ -67,7 +88,7 @@ void xihe::rendering::SkyboxPass::draw_submesh(backend::CommandBuffer &command_b
 	command_buffer.bind_image(skyboxImage->get_vk_image_view(), skyboxSampler->vk_sampler_,
 	                          0, 1, 0);
 	auto vertexInputResources = pipelineLayout.get_resources(backend::ShaderResourceType::kInput, vk::ShaderStageFlagBits::eVertex);
-
+	// gltf's buffer is a continuous bytes 
 	VertexInputState vertexInputState{};
 	for (auto &inputResource : vertexInputResources)
 	{
@@ -81,10 +102,12 @@ void xihe::rendering::SkyboxPass::draw_submesh(backend::CommandBuffer &command_b
 			inputResource.location, inputResource.location, attribute.format, attribute.offset
 		};
 		vertexInputState.attributes.push_back(vertexAttribute);
+		//std::cout << vertexAttribute.location<<" "<< vertexAttribute.offset<<std::endl;
 		vk::VertexInputBindingDescription vertexBinding{
 		    inputResource.location, attribute.stride
 		};
 		vertexInputState.bindings.push_back(vertexBinding);
+		//std::cout << vertexBinding.binding << " " << vertexBinding.stride << std::endl;
 	}
 	command_buffer.set_vertex_input_state(vertexInputState);
 	for (auto& inputResource: vertexInputResources)

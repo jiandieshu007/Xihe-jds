@@ -46,6 +46,12 @@ struct ImageBuilder : public allocated::Builder<ImageBuilder, vk::ImageCreateInf
 		return *this;
 	}
 
+	ImageBuilder &with_image_layout(vk::ImageLayout type)
+	{
+		create_info.initialLayout = type;
+		return *this;
+	}
+
 	ImageBuilder &with_array_layers(uint32_t layers)
 	{
 		create_info.arrayLayers = layers;
@@ -103,7 +109,8 @@ class Image : public allocated::Allocated<vk::Image>
 	      const vk::Extent3D     &extent,
 	      vk::Format              format,
 	      vk::ImageUsageFlags     image_usage,
-	      vk::SampleCountFlagBits sample_count = vk::SampleCountFlagBits::e1);
+	      vk::SampleCountFlagBits sample_count = vk::SampleCountFlagBits::e1,
+	      vk::ImageLayout initiate_layout = vk::ImageLayout::eUndefined);
 
 	Image(Device             &device,
 	      ImageBuilder const &builder);
@@ -118,8 +125,10 @@ class Image : public allocated::Allocated<vk::Image>
 	      uint32_t                array_layers       = 1,
 	      vk::ImageTiling         tiling             = vk::ImageTiling::eOptimal,
 	      vk::ImageCreateFlags    flags              = {},
+	      vk::ImageLayout         initiate_layout    = vk::ImageLayout::eUndefined,
 	      uint32_t                num_queue_families = 0,
-	      const uint32_t         *queue_families     = nullptr);
+	      const uint32_t         *queue_families     = nullptr
+);
 
 	Image(const Image &) = delete;
 
