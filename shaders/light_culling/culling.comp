@@ -1,0 +1,112 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+struct Light{
+	vec4 position;
+	vec4 direction;
+	vec4 color;
+	vec2 info;
+};
+
+struct Tile{
+	uint size;
+	uint index[32];
+};
+
+
+layout(std430, set = 0, binding = 0) buffer storage_{
+	Tile tiles[16*16];
+};
+
+layout(std140, set = 0, binding = 1) readonly buffer readOnly_lights{
+	Light lights[4096];
+};
+
+
+layout(std140, set = 0, binding = 2) uniform ubo{
+	mat4 inverse_view_projection;
+	uint light_num;
+	uint tile_size;
+};
+
+layout(set=0, binding = 3) uniform sampler2D Depth;
+
+struct frustum{
+	vec3 pos[8];
+};
+
+
+float distanceToPlane(vec3 planeNormal, vec3 point, vec3 planePoint) {
+    return abs(dot(planeNormal, point - planePoint));  
+}
+
+
+bool isIntersecting(frustum frustum, vec3 sphereCenter, float radius) {
+    vec3 planeNormals[6];
+    vec3 planePoints[6];
+    
+    planeNormals[0] = normalize(cross(frustum.pos[1] - frustum.pos[0], frustum.pos[2] - frustum.pos[0])); 
+    planeNormals[1] = normalize(cross(frustum.pos[5] - frustum.pos[4], frustum.pos[6] - frustum.pos[4])); 
+    planeNormals[2] = normalize(cross(frustum.pos[0] - frustum.pos[3], frustum.pos[6] - frustum.pos[0])); 
+    planeNormals[3] = normalize(cross(frustum.pos[5] - frustum.pos[3], frustum.pos[7] - frustum.pos[3])); 
+    planeNormals[4] = normalize(cross(frustum.pos[3] - frustum.pos[2], frustum.pos[6] - frustum.pos[2])); 
+    planeNormals[5] = normalize(cross(frustum.pos[4] - frustum.pos[0], frustum.pos[1] - frustum.pos[0]));
+    
+    planePoints[0] = frustum.pos[0]; 
+    planePoints[1] = frustum.pos[4];  
+    planePoints[2] = frustum.pos[0];  
+    planePoints[3] = frustum.pos[3];  
+    planePoints[4] = frustum.pos[2];  
+    planePoints[5] = frustum.pos[0];  
+    
+    for (int i = 0; i < 6; ++i) {
+        if (distanceToPlane(planeNormals[i], sphereCenter, planePoints[i]) > radius) {
+            return false; 
+        }
+    }
+    
+    return true; 
+}
+
+void main(){
+	ivec2 resolution = textureSize(Depth,0);
+	vec2 downLeft = gl_GlobalInvocationID.xy / vec2(32,32) * resolution;
+	vec2 topRight = vec2(gl_GlobalInvocationID.xy +1) / vec2(32,32) * resolution;
+	uint ind = gl_GlobalInvocationID.x * tile_size + gl_GlobalInvocationID.y;
+
+	// search DEPTHS IN TILE'S FRUSTUM 
+	ivec2 reverse_resolution = 1/resolution;
+	float minDepth = 1, maxDepth = 0;
+	for(float i=downLeft.x; i< topRight.x; i += reverse_resolution.x){
+		for(float j = downLeft.y; i<topRight.y; j += reverse_resolution.y){
+			float com = texture(Depth, vec2(i,j)).r;
+			minDepth = min(minDepth,com);
+			maxDepth = max(maxDepth,com);
+		}
+	}
+	downLeft = 2*downLeft-1;
+	topRight = 2*topRight -1;
+
+	frustum frus;
+	frus.pos[0] = (inverse_view_projection * vec4(downLeft,minDepth,1)).xyz;
+	frus.pos[1] = ( inverse_view_projection * vec4(downLeft.y,topRight.x,minDepth,1)).xyz;
+	frus.pos[2] = ( inverse_view_projection * vec4(downLeft.x,topRight.y,minDepth,1)).xyz;
+	frus.pos[3] = ( inverse_view_projection * vec4(topRight,minDepth,1)).xyz;
+	frus.pos[4] = (inverse_view_projection * vec4(downLeft,maxDepth,1)).xyz;
+	frus.pos[5] = ( inverse_view_projection * vec4(downLeft.y,topRight.x,maxDepth,1)).xyz;
+	frus.pos[6] = ( inverse_view_projection * vec4(downLeft.x,topRight.y,maxDepth,1)).xyz;
+	frus.pos[7] = ( inverse_view_projection * vec4(topRight,maxDepth,1)).xyz;
+	tiles[ind].size = 0;
+	for(uint i=0; i<light_num; ++i){
+		if( lights[i].position.a == 1 && tiles[ind].size < tile_size ){
+			tiles[ind].index[ tiles[ind].size ] = i;
+			tiles[ind].size++;
+		}else{
+			if( isIntersecting(frus,lights[i].position.xyz,lights[i].position.w) && tiles[ind].size < tile_size ){
+				tiles[ind].index[ tiles[ind].size ] = i;
+				tiles[ind].size++;
+			}
+		}
+	}
+}
