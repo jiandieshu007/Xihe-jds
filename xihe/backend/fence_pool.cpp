@@ -49,6 +49,7 @@ vk::Result FencePool::reset()
 	{
 		return vk::Result::eSuccess;
 	}
+	//device_.get_handle().waitForFences(active_fence_count_, fences_.data(), VK_TRUE, std::numeric_limits<uint32_t>::max());
 	vk::Result result = device_.get_handle().resetFences(active_fence_count_, fences_.data());
 
 	if (result == vk::Result::eSuccess)
